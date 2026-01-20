@@ -306,7 +306,7 @@ function updateTranscriptUI() {
 
 // --- CONFIG ---
 // TODO: Replace with your actual Gemini API Key from https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "AIzaSyDsGyWkthedzVj0tpnT5kw6cnY27rvP0jo"; 
+const GEMINI_API_KEY = "AIzaSyApk9qFxoyQzH3-Wbs1B-q-pXt9O6oWt6c"; 
 
 async function updateKeywordsAI() {
     // Build text from blocks to avoid UI artifacts like cursors
