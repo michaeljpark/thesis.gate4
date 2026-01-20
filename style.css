@@ -1,0 +1,804 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    gap: 32px; /* Space between boxes */
+    align-items: center;
+    transform: scale(0.8);
+    letter-spacing: -0.1em; /* Tighter spacing per user request */
+    perspective: 1500px; /* Global perspective for 3D card flips of children */
+}
+
+/* 3D Flip State for "Send" Action */
+.topmost-box, .top-box, .centered-box {
+    transform-style: preserve-3d; /* Enable 3D space for children */
+    transition: transform 0.8s ease-in-out; /* Move transition here */
+}
+
+/* Ensure children hide on flip for boxes without explicit faces */
+.topmost-box > *, .top-box > * {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Hide content when flipped to show "Empty/Blank" back */
+.card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    top: 0; 
+    left: 0;
+    box-sizing: border-box;
+    border-radius: 40px; /* Match parent */
+    overflow: hidden;
+    transform-style: preserve-3d; /* Sometimes needed */
+}
+
+/* Ensure children hide on flip for boxes without explicit faces (Prompt Box, Top Box) */
+.topmost-box .prompt-content, .top-box > * {
+    /* removed redundant backface-visibility for specificity */
+}
+
+.face-front {
+    /* Background of front faces */
+    background-color: #101010; 
+    transform: rotateY(0deg); /* Explicit Zero Position */
+    z-index: 2;
+    padding: 20px; 
+    display: flex;
+    flex-direction: column;
+}
+
+#prompt-face-front {
+    padding: 0; /* Remove padding as prompt-content handles it */
+}
+
+.face-back {
+    transform: rotateY(180deg);
+    background-color: #101010; /* Back is also dark */
+    z-index: 1; /* Front is 2, Back is 1. When flipped, Back covers? No, depend on rotation */
+    /* Content centering */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.flipped-state {
+    transform: rotateY(180deg);
+}
+
+/* --- Tuner / Radio Component Styles --- */
+.radio-tuner-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    /* Ensure it fills the face-back */
+}
+
+.radio-tuner-wrapper:active {
+    cursor: grabbing;
+}
+
+.radio-track {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    position: absolute;
+    left: 50%; 
+}
+
+.channel-item {
+    font-size: 16px; 
+    font-weight: 400;
+    letter-spacing: -1px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: color 0.3s ease, font-size 0.3s ease;
+    white-space: nowrap;
+    text-align: center;
+    position: relative;
+    box-sizing: border-box; 
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; 
+    align-items: center; 
+    height: 100%;
+    padding-top: 15px; 
+}
+
+.channel-item .text-label {
+    height: 24px; 
+    display: flex;
+    align-items: flex-end; 
+    justify-content: center;
+    margin-bottom: 12px; 
+    order: 1;
+}
+
+.channel-item .tick-mark-wrapper {
+    order: 2;
+    display: flex;
+    justify-content: center; 
+    height: 30px; 
+    position: relative;
+    width: 100%;
+}
+
+.tick-unit {
+    width: 11px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.major-tick {
+    width: 2px;
+    height: 30px;
+    background-color: rgba(255, 255, 255, 0.3);
+    transition: background-color 0.3s;
+}
+
+.minor-tick {
+    width: 2px;
+    height: 2px; 
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.channel-item.active .text-label {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: 400;
+}
+
+.channel-item.active .major-tick {
+    background-color: #ffffff; 
+}
+
+.needle {
+    position: absolute;
+    left: 50%;
+    top: 51px; /* padding-top 15 + text-label 24 + margin-bottom 12 */
+    width: 2px;
+    height: 30px; /* Match tick height */
+    transform: translateX(-50%);
+    background-color: #ffffff; /* White to match photo */
+    pointer-events: none;
+    z-index: 10;
+    opacity: 1;
+    border-radius: 2px;
+}
+
+.fade-overlay-left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60px; /* Adjusted for smaller width? */
+    height: 100%;
+    background: linear-gradient(to right, #101010, transparent);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.fade-overlay-right {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    height: 100%;
+    background: linear-gradient(to left, #101010, transparent);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* Player Controls inside Tuner */
+.radio-player-controls {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 50px; /* Slightly compacted */
+    z-index: 20;
+}
+
+.control-btn {
+    /* Reusing existing control-btn class but ensuring styles match radio's needs */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* transition already shared */
+}
+
+/* Specific play button override might be needed if IDs conflict, using classes */
+.radio-play-btn {
+    width: 60px;
+    height: 60px;
+    background: #303030 !important; /* Force visibility */
+    border-radius: 20px; 
+    color: white; 
+    box-shadow: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.radio-play-btn.playing {
+    background: #FF453A !important; 
+    box-shadow: 0 4px 20px rgba(255, 69, 58, 0.4); 
+}
+
+.radio-play-btn:hover {
+    transform: scale(1.05); 
+    background: #404040 !important;
+}
+
+.radio-play-btn.playing:hover {
+    background: #FF554A !important;
+}
+
+
+
+.topmost-box {
+    width: 453px;
+    height: 176px;
+    /* background-color: #101010;  Removed to prevent background bleed during flip if needed, but faces cover it. Keep if gaps appear. */
+    background-color: transparent; 
+    border-radius: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    /* overflow: hidden;  REMOVED: Breaks 3D space */
+    cursor: pointer;
+    position: relative;
+    perspective: 1000px; /* For 3D transforms */
+    transform-style: preserve-3d; /* CRITICAL for 3D children */
+    transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Smooth Flip */
+}
+
+.prompt-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Center items vertically */
+    width: 100%;
+    height: 100%;
+    padding: 30px; /* Reduced padding slightly to prevent overflow */
+    box-sizing: border-box;
+    backface-visibility: hidden;
+    transition: transform 0.6s;
+    position: relative;
+}
+
+.prompt-text {
+    font-size: 29px; /* Requested size */
+    color: white;
+    font-family: 'Space Grotesk', sans-serif;
+    white-space: pre-line;
+    line-height: 1.2;
+    text-align: left;
+    font-weight: 400; /* Regular */
+    flex: 1; /* Take up available space */
+}
+
+.prompt-icon {
+    position: absolute;
+    top: 30px; /* Adjust top position */
+    right: 30px; /* Adjust right position */
+}
+
+
+.prompt-icon svg {
+    width: 48px;
+    height: 48px;
+    color: white; /* Ensure fill/stroke uses currentColor if applicable or just white */
+    stroke: white; /* Force stroke */
+}
+
+/* Specific styling for different icons if needed */
+
+/* --- Schedule Card (Back Prompt) --- */
+.schedule-card {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    gap: 20px; /* Reduced gap */
+    box-sizing: border-box;
+    padding: 0px 24px; /* Slightly reduced padding */
+}
+
+.icon-box {
+    width: 100px;  /* Reduced from 120px to match smaller text proportions */
+    height: 100px; /* Reduced from 120px */
+    background-color: #202022; 
+    border-radius: 30px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #606060; 
+    flex-shrink: 0;
+}
+
+.icon-box svg {
+    width: 48px; /* Reduced from 64px */
+    height: 48px;
+    stroke: #666; 
+}
+
+.info-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; 
+    height: 100px; /* Match icon-box height to align top/bottom edges */
+    font-family: 'Space Grotesk', sans-serif; 
+    padding: 0; /* Remove padding to ensure alignment with icon box edges */
+}
+
+.info-title {
+    font-size: 17px; 
+    color: white;
+    font-weight: 600; 
+    margin-bottom: 2px; /* Tighter spacing */
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;  
+    overflow: hidden;
+}
+
+.info-date {
+    font-size: 13px; 
+    color: #666; 
+    font-weight: 500;
+    margin-bottom: auto; /* Pushes footer to the bottom of the 100px container */
+    padding-top: 0;
+    letter-spacing: 0.01em;
+}
+
+.info-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Center align items in footer vertically */
+    width: 100%;
+    padding-bottom: 0px; 
+    margin-top: 0; 
+}
+
+.info-tag {
+    font-size: 16px; /* User requested 16 */
+    color: white;
+    border: 1.5px solid white; /* Thinner border for smaller text */
+    border-radius: 50px; 
+    padding: 2px 12px;
+    font-weight: 500;
+    letter-spacing: 0em;
+}
+
+.info-time {
+    font-size: 20px; /* User requested 20 */
+    color: white;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-right: 0px;
+}
+
+/* Animation classes */
+.flip-out {
+    animation: flipOut 0.3s forwards ease-in;
+}
+
+.flip-in {
+    animation: flipIn 0.3s forwards ease-out;
+}
+
+@keyframes flipOut {
+    from { transform: rotateX(0deg); opacity: 1; }
+    to { transform: rotateX(-90deg); opacity: 0; }
+}
+
+@keyframes flipIn {
+    from { transform: rotateX(90deg); opacity: 0; }
+    to { transform: rotateX(0deg); opacity: 1; }
+}
+
+/* Loading Spinner for Play Button */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-icon {
+    animation: spin 1s linear infinite;
+    transform-origin: center;
+}
+
+/* Podcast Script Face */
+#podcast-face {
+    display: flex; 
+    flex-direction: column; 
+    align-items: flex-start; 
+    justify-content: flex-start; /* Explicitly start from top */
+    overflow-y: auto;
+    
+    /* Hide Scrollbar */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+#podcast-face::-webkit-scrollbar {
+    display: none;
+}
+
+#podcast-content {
+    padding: 20px; 
+    font-family: 'Space Grotesk', sans-serif; 
+    text-align: left; 
+    width: 100%;
+    box-sizing: border-box;
+    /* Enable full height for centering loader */
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.script-section {
+    margin-bottom: 30px;
+}
+
+.script-label {
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 15px;
+    display: block;
+    font-size: 32px; /* Slightly larger header */
+}
+
+.script-text {
+    /* Base style for inactive text */
+    font-weight: 400;
+    color: #606060; 
+    line-height: 1.4;
+    font-size: 29px; /* Requested match with front */
+    transition: color 0.3s;
+}
+
+.tts-sentence {
+    transition: color 0.2s;
+    cursor: pointer; /* Allow clicking to jump? maybe later */
+}
+
+.tts-sentence.active {
+    color: #FFFFFF;
+}
+
+/* Loading Animation for Script */
+.script-loader {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Take available space to center */
+    flex-grow: 1; 
+    width: 100%;
+    min-height: 200px; /* Minimum height to look good */
+}
+.script-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #303030;
+    border-top: 4px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.top-box {
+    width: 453px;
+    height: 386px;
+    background-color: #101010;
+    border-radius: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 30px;
+    box-sizing: border-box;
+    font-family: 'Space Grotesk', sans-serif;
+    position: relative;
+    justify-content: space-between;
+}
+
+#transcript-container {
+    font-size: 29px; /* All text unified to 29 */
+    line-height: 1.2;
+    color: white;
+    font-weight: 400; /* Regular */
+    overflow-y: auto;
+    height: 250px;
+    /* Hide scrollbar */
+    -ms-overflow-style: none;  
+    scrollbar-width: none;  
+}
+
+#transcript-container::-webkit-scrollbar {
+    display: none;
+}
+
+#final-text {
+    color: white;
+}
+
+#interim-text {
+    color: #555; /* Gray for interim */
+}
+
+#keywords-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px; /* Restored margin */
+    
+    /* Horizontal Scroll Layout */
+    overflow-x: auto;
+    white-space: nowrap;
+    
+    width: 100%;
+    
+    padding-bottom: 5px; /* For scrollbar breathing room if visible */
+    
+    /* Hide scrollbar for cleaner look */
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+    
+    /* Enable drag scrolling setup */
+    cursor: grab;
+    user-select: none;
+}
+
+#word-count {
+    color: white;
+    font-size: 16px;
+    font-family: 'Space Grotesk', sans-serif;
+    white-space: nowrap;
+    text-align: right; /* Right align */
+    width: 100%;
+    margin-top: 5px; /* Space from keywords */
+}
+
+#keywords-container::-webkit-scrollbar {
+    display: none;
+}
+
+#keywords-container:active {
+    cursor: grabbing;
+}
+
+.keyword-chip {
+    border: 1px solid white;
+    border-radius: 20px;
+    padding: 5px 15px;
+    color: white;
+    font-size: 16px;
+    background: transparent;
+    flex-shrink: 0; /* Prevent chips from squishing */
+}
+
+.text-cursor {
+    color: white; /* White color */
+    animation: blink 1s step-end infinite;
+    font-weight: bold;
+    margin: 0 4px;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.centered-box {
+    background-color: #101010;
+    width: 453px; 
+    height: 176px;
+    flex-shrink: 0;
+    border-radius: 40px; /* Slightly adjusted to look better */
+    
+    /* Optional: responsive sizing keeping ratio if screen is small */
+    max-width: 90vw;
+    position: relative;
+    /* display: flex; -> Moved to faces */
+    /* flex-direction: column; */
+    padding: 0; /* REMOVED padding for 3D faces */
+    box-sizing: border-box;
+    font-family: 'Space Grotesk', sans-serif;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+#time-display {
+    font-size: 24px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    /* letter-spacing inherited from app-container */
+    opacity: 0.9;
+}
+
+.visualizer-container {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    overflow: hidden; /* Important for preventing canvas overflow */
+    margin: 10px 0;
+    cursor: grab; /* Indicates draggable */
+    touch-action: none; /* Prevent browser scrolling on touch */
+}
+
+.visualizer-container:active {
+    cursor: grabbing;
+}
+
+#waveform-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#playhead {
+    position: absolute;
+    top: 10%;
+    bottom: 10%;
+    left: 50%;
+    width: 2px;
+    background-color: #007AFF; /* Functioning playhead color */
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 10;
+    border-radius: 2px;
+    opacity: 1; /* Always visible in iPhone logic */
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: 60px; /* Slightly taller for alignment */
+    padding: 0; /* REMOVED padding to push buttons to edges */
+}
+
+.control-side.left {
+    justify-self: start;
+}
+
+.control-side.right {
+    justify-self: end;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px; /* Reduced padding from 10px to 6px for equal spacing */
+    transition: opacity 0.2s;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+.control-btn:active {
+    opacity: 0.5;
+}
+
+.control-side .control-btn svg {
+    width: 48px;
+    height: 48px;
+}
+
+.control-btn.texter {
+    color: white; /* Changed from Blue to White per request */
+    font-weight: 600;
+}
+
+.control-btn.secondary {
+    color: #888;
+}
+
+.main-action {
+    position: relative; /* Key for absolute positioning children */
+    width: 60px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* justify-self: center is implicit in grid if not stretched, but let's be explicit */
+    justify-self: center;
+}
+
+/* Red Record Button */
+.record-btn {
+    width: 60px; /* Slightly larger per modern look */
+    height: 60px;
+    border-radius: 50%;
+    background-color: #FF3B30; /* iOS Red */
+    border: none; /* No border as requested */
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+    outline: none;
+    z-index: 5;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* Subtle depth */
+}
+
+/* Play/Pause Wrapper positioned to the RIGHT of the center record button */
+#playback-wrapper {
+    position: absolute;
+    left: 50%; /* Center relative to main-action */
+    top: 50%;
+    transform: translate(35px, -50%); /* Move right from center (30px radius + gap) */
+    display: flex;
+    align-items: center;
+    padding-left: 0; /* Handled by transform */
+    width: max-content;
+}
+
+/* Recording State Animation */
+.record-btn.recording {
+    background-color: #FF3B30; 
+    width: 32px;
+    height: 32px;
+    border-radius: 4px; 
+    box-shadow: none;
+    transform: scale(1);
+    border-width: 0px;
+}
+
+/* Play/Pause Buttons override */
+.play-btn, .pause-btn {
+    width: auto;
+    height: auto;
+    border-radius: 0; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 0; /* Reset padding */
+    margin-left: 10px; /* Gap from record button */
+}
+
+.play-btn svg, .pause-btn svg {
+    margin: 0; /* Reset scale optical adjustment */
+}
+
+/* Scrubbing Slider - Hidden but overlaying for interaction */
+#seeker {
+    position: absolute;
+    left: 0;
+    top: 50px; /* Cover visualizer area */
+    width: 100%;
+    height: 60px;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+    z-index: 5;
+    display: none; /* Enabled only in review mode */
+}

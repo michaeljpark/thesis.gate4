@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 michael joongmin park gate 4 component showcase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="topmost-box" id="prompt-box">
+             <!-- FRONT: Prompts -->
+             <div class="card-face face-front" id="prompt-face-front">
+                <!-- Content injected by JS -->
+             </div>
+             <!-- BACK: Scheduled Item -->
+             <div class="card-face face-back" id="prompt-face-back">
+                <div class="schedule-card">
+                    <div class="icon-box">
+                        <!-- Radio Icon to match screenshot -->
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="6" width="20" height="14" rx="4" ry="4"></rect>
+                            <line x1="6" y1="2" x2="6" y2="6"></line>
+                            <circle cx="9" cy="13" r="3"></circle>
+                            <line x1="17" y1="13" x2="16.99" y2="13.01"></line>
+                            <line x1="19" y1="13" x2="18.99" y2="13.01"></line>
+                            <line x1="15" y1="13" x2="14.99" y2="13.01"></line>
+                        </svg>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-title" id="schedule-title">-- --- --</div>
+                        <div class="info-date" id="schedule-date">-- --- --</div>
+                        <div class="info-footer">
+                            <div class="info-tag" id="schedule-tag">#--</div>
+                            <div class="info-time" id="schedule-time">--:--</div>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </div>
+        <div class="top-box">
+            <!-- FRONT: Transcript -->
+            <div class="card-face face-front" id="transcript-face">
+                <div id="transcript-container">
+                    <span id="final-text"></span><span id="interim-text"></span>
+                </div>
+                <div id="keywords-container"></div>
+                <div id="word-count">0/3000</div>
+            </div>
+            
+            <!-- BACK: Podcast Script -->
+            <div class="card-face face-back" id="podcast-face">
+                <!-- Content injected by AI -->
+                <div id="podcast-content">
+                    <div class="script-loader"><div class="script-spinner"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="centered-box">
+            <!-- FRONT FACE: Recorder -->
+            <div class="card-face face-front">
+                <div class="header">
+                    <span id="time-display">00:00.00</span>
+                </div>
+                
+                <div class="visualizer-container" id="visualizer-container">
+                    <canvas id="waveform-canvas"></canvas>
+                    <div id="playhead"></div>
+                </div>
+
+                <div class="controls">
+                    <!-- Left: Cancel/Secondary -->
+                    <div class="control-side left">
+                        <button id="btn-delete" class="control-btn secondary" style="visibility: hidden;" aria-label="Delete">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M10 12L14 16M14 12L10 16M18 6L17.1991 18.0129C17.129 19.065 17.0939 19.5911 16.8667 19.99C16.6666 20.3412 16.3648 20.6235 16.0011 20.7998C15.588 21 15.0607 21 14.0062 21H9.99377C8.93927 21 8.41202 21 7.99889 20.7998C7.63517 20.6235 7.33339 20.3412 7.13332 19.99C6.90607 19.5911 6.871 19.065 6.80086 18.0129L6 6M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Center: Record/Play -->
+                    <div class="main-action">
+                        <button id="btn-record" class="record-btn"></button>
+                        
+                        <!-- Playback controls absolute positioned to right of record -->
+                        <div id="playback-wrapper" style="display: none;">
+                            <button id="btn-play" class="control-btn play-btn" style="display: none;">
+                                <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <button id="btn-pause" class="control-btn pause-btn" style="display: none;">
+                                <svg viewBox="0 0 24 24" width="48" height="48"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Done/Edit -->
+                    <div class="control-side right">
+                        <button id="btn-done" class="control-btn texter" style="visibility: hidden;" aria-label="Done">
+                            <svg width="48" height="48" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                                <g transform="translate(-362.000000, -1089.000000)">
+                                    <path d="M384.535,1105.54 C384.145,1105.93 383.512,1105.93 383.121,1105.54 L379,1101.41 L379,1112 C379,1112.55 378.553,1113 378,1113 C377.447,1113 377,1112.55 377,1112 L377,1101.41 L372.879,1105.54 C372.488,1105.93 371.854,1105.93 371.465,1105.54 C371.074,1105.14 371.074,1104.51 371.465,1104.12 L377.121,1098.46 C377.361,1098.22 377.689,1098.15 378,1098.21 C378.311,1098.15 378.639,1098.22 378.879,1098.46 L384.535,1104.12 C384.926,1104.51 384.926,1105.14 384.535,1105.54 L384.535,1105.54 Z M378,1089 C369.163,1089 362,1096.16 362,1105 C362,1113.84 369.163,1121 378,1121 C386.837,1121 394,1113.84 394,1105 C394,1096.16 386.837,1089 378,1089 L378,1089 Z" fill="currentColor"></path>
+                                </g>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BACK FACE: Radio Tuner -->
+            <div class="card-face face-back">
+                <div class="radio-tuner-wrapper">
+                    <div class="radio-track" id="radio-track">
+                        <!-- JS populated -->
+                    </div>
+                    <div class="needle"></div>
+                    <div class="fade-overlay-left"></div>
+                    <div class="fade-overlay-right"></div>
+                </div>
+                <div class="radio-player-controls">
+                    <button class="control-btn handle-btn" id="radio-prev">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M11 19L2 12L11 5V19ZM20 19L11 12L20 5V19Z" /></svg>
+                    </button>
+                    <button class="control-btn radio-play-btn" id="radio-play-btn">
+                        <svg class="play-icon" viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M8 5V19L19 12L8 5Z" /></svg>
+                        <svg class="pause-icon" viewBox="0 0 24 24" width="24" height="24" fill="white" style="display: none;"><path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z" /></svg>
+                    </button>
+                    <button class="control-btn handle-btn" id="radio-next">
+                         <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M5 19L14 12L5 5V19ZM14 5V19L23 12L14 5Z" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Scrubber overlay removed, using canvas touch events -->
+    </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
