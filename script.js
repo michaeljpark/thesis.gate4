@@ -357,18 +357,18 @@ async function updateInfoCardLocal() {
     };
 
     // Generate Title
-    let title = "Voice Memo";
+    let title = "Daily Insight"; // Changed from "Voice Memo"
     if (eventMatches.length > 0) {
         const mainEvent = toTitleCase(eventMatches[0]);
         if (workMatches.length > 0) {
              title = `${toTitleCase(workMatches[0])} ${mainEvent}`;
         } else {
-             title = `${mainEvent} Note`;
+             title = `${mainEvent} Focus`; // Changed "Note" to "Focus"
         }
     } else if (workMatches.length > 0) {
         title = `${toTitleCase(workMatches[0])} Update`;
     } else if (dateMatches.length > 0) {
-        title = `${toTitleCase(dateMatches[0])}'s Note`;
+        title = `${toTitleCase(dateMatches[0])}'s Journal`; // Changed "Note" to "Journal"
     }
 
     // Generate Keywords (Max 3)
@@ -1196,8 +1196,8 @@ function updatePlayButtonUI(isPlaying) {
 
 // --- Modified Logic for AI & Controls ---
 
-async function handleRadioChannelChange(newTheme) {
-    if (newTheme === currentRadioTheme) return; // Ignore if same channel
+async function handleRadioChannelChange(newTheme, force = false) {
+    if (!force && newTheme === currentRadioTheme) return; // Ignore if same channel unless forced
 
     currentRadioTheme = newTheme;
     
@@ -1241,161 +1241,166 @@ function createLoaderIcon(parent) {
     return svg;
 }
 
+// [Old generatePodcastScript definition removed]
+
+// --- MOCK SCRIPTS ---
+const MOCK_SCRIPTS = {
+    'Productivity': `
+[Intro]
+Welcome back to your Productivity boost. Today we are focusing on streamlining your workflow for maximum efficiency.
+[Body]
+Let's look at your current tasks. You have a few meetings lined up and a project deadline approaching.
+To handle this, try the time-blocking method. allocating specific hours for deep work can significantly reduce context switching.
+Remember to take short breaks to keep your mind fresh.
+[Outro]
+Stay focused and conquer your day. You have the tools to succeed.
+`,
+    'Focus': `
+[Intro]
+Enter the zone of deep focus. This session is designed to eliminate distractions and enhance concentration.
+[Body]
+Your notes mention a need for clarity on the upcoming project.
+Let's prioritize the most critical task first. Close unrelated tabs and put your phone on silence.
+Visualizing the end result can also provide the motivation needed to start.
+[Outro]
+Keep this momentum going. Your ability to focus is your superpower.
+`,
+    'Daily Flow': `
+[Intro]
+Hello and welcome to your Daily Flow. Let's get in sync with your rhythm for today.
+[Body]
+It seems like a balanced day ahead. You have a mix of creative work and administrative duties.
+Try to tackle the creative tasks when your energy is highest.
+Transition smoothly between tasks by taking a moment to breathe and reset.
+[Outro]
+Flow through your day with ease. You are doing great.
+`,
+    'Discovery': `
+[Intro]
+Welcome to Discovery. It is time to explore new ideas and broaden your horizons.
+[Body]
+Your notes suggest an interest in learning a new skill.
+Why not dedication twenty minutes today to research or practice?
+Small, consistent steps lead to big discoveries over time.
+Keep an open mind and see where your curiosity takes you.
+[Outro]
+Adventure awaits in every new piece of knowledge. Enjoy the journey.
+`,
+    'Entertainment': `
+[Intro]
+Time to unwind with Entertainment. Let's take a break and recharge your batteries.
+[Body]
+You have been working hard, so you deserve some leisure time.
+Maybe catch up on that show you've been watching or listen to your favorite album.
+Relaxation is a key part of productivity, so don't feel guilty about resting.
+[Outro]
+Enjoy your downtime. You will come back stronger.
+`
+};
+
 async function generatePodcastScript(theme) {
+    console.log("generatePodcastScript started for theme:", theme);
     // ... existing ...
     const sessionData = sessionStorage.getItem('tempsession');
     const contentDiv = document.getElementById('podcast-content');
     
+    // Always clear content first and show loader
+    if(contentDiv) contentDiv.innerHTML = '<div class="script-loader"><div class="script-spinner"></div></div>';
+    else console.error("contentDiv not found!");
+
     if (!sessionData) {
-        contentDiv.innerHTML = '<div style="padding:20px; color:#606060;">No recording data found.</div>';
-        return;
+        console.log("No session data, proceed with generic mock.");
     }
-    const { fullText } = JSON.parse(sessionData);
-    
-    // Show Loader in Content Area
-    contentDiv.innerHTML = '<div class="script-loader"><div class="script-spinner"></div></div>';
-    
-    // Check for recording data
-    // (Pollinations AI does not require a specific key, skipping that check)
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout (Pollinations might be slower)
+        console.log(`[Mock Status] Generating script for Theme: ${theme}`);
+        
+        // Simulate API Loading Delay
+        await new Promise(resolve => setTimeout(resolve, 2500)); // 2.5s delay
+        
+        console.log("Mock delay finished");
 
-        // System Prompt Construction
-        const systemPromptText = `You are a professional podcast script writer. 
-Theme: "${theme}".
+        // Get Mock Text
+        let text = MOCK_SCRIPTS[theme] || MOCK_SCRIPTS['Daily Flow'];
+        
+        // --- Process the Text (Same Logic as before) ---
+        let htmlBuffer = '';
+        let sentencesForTTS = [];
+        let sentenceCounter = 0;
+        
+        const lines = text.split('\n');
+        let currentHeader = null;
+        let currentTextBuffer = '';
+        
+        const flushBuffer = () => {
+            if (!currentTextBuffer.trim()) return;
+            
+            // Process the accumulated text
+            const result = processTextForTTS(currentTextBuffer, sentenceCounter);
+            
+            // Wrap in section wrapper
+            if (currentHeader) {
+                const headerId = `tts-header-${sentenceCounter++}`; 
+                
+                // Add Header to TTS Queue
+                sentencesForTTS.push({
+                    text: currentHeader,
+                    elementId: headerId
+                });
 
-Task: Create a detailed, engaging podcast script based on the User Notes.
-LENGTH REQUIREMENT: Make it LONG and detailed. At least 8-12 sentences per section. Expand on the ideas significantly (approx 400-500 words total).
-
-FORMATTING RULES:
-1. Start directly with the [Intro] header. No "Here is the script" chat.
-2. Use headers [Intro], [Body], [Outro].
-3. Ensure sentences are clear and correct for TTS (Text-to-Speech).
-4. CRITICAL: Do NOT include speaker labels (e.g. "Host:", "Guest:").
-5. CRITICAL: Do NOT include sound effects, music cues, or stage directions (e.g. "[Music]", "*laughs*"). Write ONLY the spoken words.`;
-
-        console.log(`[AI Status] Sending request to Pollinations AI... (Theme: ${theme})`);
-
-        // Pollinations.ai OpenAI-compatible Endpoint
-        const response = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            signal: controller.signal,
-            body: JSON.stringify({
-                messages: [
-                    { role: 'system', content: systemPromptText },
-                    { role: 'user', content: `User Notes: "${fullText}"` }
-                ],
-                model: 'openai', // Free tier model indicator
-                seed: 42
-            })
+                htmlBuffer += `<div class="script-section">
+                    <span id="${headerId}" class="script-label">${currentHeader}</span>
+                    <div class="script-text">${result.html}</div>
+                </div>`;
+                
+                currentHeader = null; 
+            } else {
+                htmlBuffer += `<div class="script-text" style="margin-bottom:20px;">${result.html}</div>`;
+            }
+            
+            sentencesForTTS.push(...result.queue);
+            sentenceCounter = result.nextCounter;
+            currentTextBuffer = '';
+        };
+        
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            
+            const headerMatch = line.match(/^\[(.*?)\]/);
+            if (headerMatch) {
+                flushBuffer();
+                currentHeader = headerMatch[1]; 
+                const remainder = line.slice(headerMatch[0].length).trim();
+                if (remainder) currentTextBuffer += remainder + ' ';
+            } else {
+                currentTextBuffer += line + ' ';
+            }
         });
         
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-            console.log("[AI Status] Response received successfully from Pollinations.");
-            const data = await response.json();
-            const text = data.choices[0].message.content; // OpenAI format
-            let sentencesForTTS = [];
-            let sentenceCounter = 0;
-            
-            const lines = text.split('\n');
-            let currentHeader = null;
-            let currentTextBuffer = '';
-            
-            const flushBuffer = () => {
-                if (!currentTextBuffer.trim()) return;
-                
-                // Process the accumulated text
-                const result = processTextForTTS(currentTextBuffer, sentenceCounter);
-                
-                // Wrap in section wrapper
-                // If we have a header, we wrap it. If not, it's just text (e.g. pre-intro chatter caught)
-                if (currentHeader) {
-                    const headerId = `tts-header-${sentenceCounter++}`; // Unique ID for header
-                    
-                    // Add Header to TTS Queue (so it reads "Intro", "Body" etc.)
-                    // We push this BEFORE the content sentences
-                    // Note: We need to push to sentencesForTTS. But result.queue is expecting to be pushed.
-                    // We must do it in order: Header -> Content.
-                    
-                    sentencesForTTS.push({
-                        text: currentHeader,
-                        elementId: headerId
-                    });
-
-                    htmlBuffer += `<div class="script-section">
-                        <span id="${headerId}" class="script-label">${currentHeader}</span>
-                        <div class="script-text">${result.html}</div>
-                    </div>`;
-                    
-                    currentHeader = null; 
-                } else {
-                    // No header (orphaned text)
-                    htmlBuffer += `<div class="script-text" style="margin-bottom:20px;">${result.html}</div>`;
-                }
-                
-                sentencesForTTS.push(...result.queue);
-                sentenceCounter = result.nextCounter;
-                currentTextBuffer = '';
-            };
-            
-             lines.forEach(line => {
-                line = line.trim();
-                // ... logic same as before ...
-                if (!line) return;
-                
-                const headerMatch = line.match(/^\[(.*?)\]/);
-                if (headerMatch) {
-                    flushBuffer();
-                    currentHeader = headerMatch[1]; 
-                    const remainder = line.slice(headerMatch[0].length).trim();
-                    if (remainder) currentTextBuffer += remainder + ' ';
-                } else {
-                    currentTextBuffer += line + ' ';
-                }
-            });
-            
-            // Final Flush
-            flushBuffer();
-            
-            contentDiv.innerHTML = htmlBuffer;
-            
-            // Ensure Scroll to Top on new script with delay to ensure DOM layout
-            const face = document.getElementById('podcast-face');
-            if (face) {
-                // Immediate
+        // Final Flush
+        flushBuffer();
+        
+        if(contentDiv) contentDiv.innerHTML = htmlBuffer;
+        else console.error("contentDiv missing on finish");
+        
+        // Scroll Reset
+        const face = document.getElementById('podcast-face');
+        if (face) {
+            face.scrollTop = 0;
+            requestAnimationFrame(() => {
                 face.scrollTop = 0;
-                // Defer to next paint
-                requestAnimationFrame(() => {
-                    face.scrollTop = 0;
-                    // Double check
-                    setTimeout(() => {
-                        face.scrollTop = 0;
-                    }, 50);
-                });
-            }
-
-            prepareTTS(sentencesForTTS);
-        } else {
-            console.error(`[AI Status] API Error: ${response.status} ${response.statusText}`);
-            console.error("Gemini API Error:", response.status, response.statusText);
-            contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
-                Generation failed (${response.status}).<br>
-                Check API Key quota or validity.
-            </div>`;
+            });
         }
+
+        prepareTTS(sentencesForTTS);
+        console.log("Podcast generation complete");
+        
     } catch (e) {
-        console.error("[AI Status] Network/Script Error:", e);
         console.error("Script Gen Error:", e);
-        contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
-            Script generation timed out or failed.<br>
-            Check internet connection.
+        if(contentDiv) contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
+            Script generation failed.<br>
+            Please try again.
         </div>`;
     }
 }
@@ -1589,7 +1594,8 @@ function onDoneClick() {
     // 3. Trigger initial AI Script Generation for current radio theme
     // We assume the tuner is initialized and standing on 'Productivity' (or whatever default)
     // currentRadioTheme was set in initTuner
-    handleRadioChannelChange(currentRadioTheme || 'Productivity');
+    // FORCE update even if theme hasn't changed (since this is the first generation event)
+    handleRadioChannelChange(currentRadioTheme || 'Productivity', true);
 }
 
 function onDeleteClick() {
