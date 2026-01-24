@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"name": "thesis.gate4",
+			"path": "."
+		},
+		{
+			"name": "Radiocomp",
+			"path": "../../audiocomponent1/Radiocomp"
+		},
+		{
+			"name": ".vscode",
+			"path": "../../audiocomponent1/.vscode"
+		}
+	],
+	"settings": {}
+}

@@ -240,7 +240,7 @@ function initSpeechRecognition() {
             
             interimTranscript = sessionInterim;
             updateTranscriptUI();
-            updateKeywords();
+            updateInfoCardLocal();
         };
 
         recognition.onerror = (event) => {
@@ -305,10 +305,10 @@ function updateTranscriptUI() {
 }
 
 // --- CONFIG ---
-// TODO: Replace with your actual Gemini API Key from https://aistudio.google.com/app/apikey
-const GEMINI_API_KEY = "AIzaSyApk9qFxoyQzH3-Wbs1B-q-pXt9O6oWt6c"; 
+// Pollinations AI (Free, No Key Required)
+// const GEMINI_API_KEY = "AIzaSyDVPXOsuM6aLEtsDlR8MYIBdiwxKIpoNDM"; 
 
-async function updateKeywordsAI() {
+async function updateInfoCardLocal() {
     // Build text from blocks to avoid UI artifacts like cursors
     let fullText = transcriptBlocks.map(b => b.text).join(' ');
     if (activeTranscriptBlock) {
@@ -321,115 +321,95 @@ async function updateKeywordsAI() {
 
     if (!fullText.trim() || fullText.trim().length < 5) return; // Skip if too short
 
-    // UI Loading State for Schedule Card
+    // UI Elements
     const sTitle = document.getElementById('schedule-title');
     const sDate = document.getElementById('schedule-date');
     const sTag = document.getElementById('schedule-tag');
     const sTime = document.getElementById('schedule-time');
+    const container = document.getElementById('keywords-container');
 
-    if(sTitle) sTitle.textContent = "-- --- --";
-    if(sDate) sDate.textContent = "-- --- --"; // Keep date visible or dash it? User asked for dashing loaded states.
-    if(sTag) sTag.textContent = "#--";
-    if(sTime) sTime.textContent = "--:--";
+    // --- LOCAL KEYWORD EXTRACTION LOGIC ---
+    const lowerText = fullText.toLowerCase();
 
-    // Use Google Gemini API
-    if (GEMINI_API_KEY === "YOUR_API_KEY_HERE") {
-        console.warn("Gemini API Key missing. Please update script.js");
-        return;
+    const categories = {
+        date: ['today', 'tomorrow', 'yesterday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'weekend'],
+        event: ['meeting', 'call', 'seminar', 'workshop', 'conference', 'interview', 'sync', 'standup', 'brainstorm'],
+        work: ['project', 'deadline', 'client', 'budget', 'report', 'presentation', 'proposal', 'contract', 'thesis', 'design', 'code', 'bug', 'feature']
+    };
+
+    const findMatches = (list) => {
+        return list.filter(word => lowerText.includes(word));
+    };
+
+    const dateMatches = findMatches(categories.date);
+    const eventMatches = findMatches(categories.event);
+    const workMatches = findMatches(categories.work);
+
+    // Combine and Deduplicate
+    let allMatches = [...eventMatches, ...workMatches, ...dateMatches];
+    let uniqueKeywords = [...new Set(allMatches)];
+
+    // Helper for Title Case
+    const toTitleCase = (str) => {
+        return str.replace(/\w\S*/g, (txt) => {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        });
+    };
+
+    // Generate Title
+    let title = "Voice Memo";
+    if (eventMatches.length > 0) {
+        const mainEvent = toTitleCase(eventMatches[0]);
+        if (workMatches.length > 0) {
+             title = `${toTitleCase(workMatches[0])} ${mainEvent}`;
+        } else {
+             title = `${mainEvent} Note`;
+        }
+    } else if (workMatches.length > 0) {
+        title = `${toTitleCase(workMatches[0])} Update`;
+    } else if (dateMatches.length > 0) {
+        title = `${toTitleCase(dateMatches[0])}'s Note`;
     }
 
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                system_instruction: {
-                    parts: [{ text: "You are a helpful assistant. Analyze the transcript. 1. Create a short, professional Title (max 6 words) for this session/meeting. 2. Extract 3 relevant keywords. Return format: TITLE: [Title Text] | KEYWORDS: [comma, separated, list]" }]
-                },
-                contents: [{
-                    parts: [{
-                        text: "Transcript: " + fullText
-                    }]
-                }]
-            })
+    // Generate Keywords (Max 3)
+    let finalKeywords = uniqueKeywords.slice(0, 3).map(k => toTitleCase(k));
+    if (finalKeywords.length === 0) {
+        finalKeywords = ["General", "Memo"];
+    }
+
+    // --- UPDATE UI ---
+    
+    // 1. Title
+    if (sTitle) sTitle.textContent = title;
+
+    // 2. Date
+    const now = new Date();
+    const day = now.getDate();
+    const suffix = (day % 10 == 1 && day != 11) ? 'st' : (day % 10 == 2 && day != 12) ? 'nd' : (day % 10 == 3 && day != 13) ? 'rd' : 'th';
+    const formattedDate = `${now.toLocaleString('default', { month: 'long' })} ${day}${suffix}, ${now.getFullYear()}`;
+    if (sDate) sDate.textContent = formattedDate;
+
+    // 3. Time
+    if (sTime) {
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        sTime.textContent = `${hours}:${minutes}`;
+    }
+
+    // 4. Tag (First Keyword)
+    if (sTag && finalKeywords.length > 0) {
+        sTag.textContent = '#' + finalKeywords[0];
+    }
+
+    // 5. Keywords Container (Chips)
+    if (container) {
+        container.innerHTML = ''; 
+        finalKeywords.forEach(k => {
+            const chip = document.createElement('div');
+            chip.className = 'keyword-chip';
+            chip.textContent = '#' + k;
+            container.appendChild(chip);
         });
-
-        if (response.ok) {
-            const data = await response.json();
-            const content = data.candidates[0].content.parts[0].text;
-            
-            // Expected format: TITLE: My Meeting | KEYWORDS: work, daily, sync
-            
-            let title = "Session Record";
-            let keywords = ["Daily"];
-
-            if (content.includes("TITLE:") && content.includes("KEYWORDS:")) {
-                const parts = content.split('|');
-                parts.forEach(p => {
-                    const trimmed = p.trim();
-                    if (trimmed.startsWith("TITLE:")) {
-                        title = trimmed.replace("TITLE:", "").trim();
-                    } else if (trimmed.startsWith("KEYWORDS:")) {
-                        keywords = trimmed.replace("KEYWORDS:", "").trim().split(',').map(s => s.trim());
-                    }
-                });
-            } else {
-                // Fallback basic parsing if model deviates
-                keywords = content.split(',').map(s => s.trim()); // Assume just keywords if pattern fails
-            }
-
-            // Update Schedule Card UI
-            if (sTitle) sTitle.textContent = title;
-            
-            // Fixed / Current Date Logic
-            const now = new Date();
-             // Hardcoded context date as requested or dynamic? User said "current date is Jan 20, 2026". 
-            // We'll mimic that strictly or use dynamic. Let's use dynamic formatter but maybe hardcode year if user insists on 2026 context. 
-            // For now, let's use a nice dynamic formatter.
-            const options = { month: 'long', day: 'numeric', year: 'numeric' };
-            const dateStr = now.toLocaleDateString('en-US', options); 
-            // Add 'th', 'st', 'nd' suffix manually if we want exact "January 20th" look
-            const day = now.getDate();
-            const suffix = (day % 10 == 1 && day != 11) ? 'st' : (day % 10 == 2 && day != 12) ? 'nd' : (day % 10 == 3 && day != 13) ? 'rd' : 'th';
-            const formattedDate = `${now.toLocaleString('default', { month: 'long' })} ${day}${suffix}, ${now.getFullYear()}`;
-            
-            if (sDate) sDate.textContent = formattedDate;
-
-            // Update Tag (First keyword)
-            if (sTag && keywords.length > 0) {
-                 let tagText = keywords[0].replace(/['"#]/g, '');
-                 if (tagText.toLowerCase() === 'hashtag') tagText = 'Daily';
-                 sTag.textContent = '#' + tagText;
-            }
-
-            // Update Time
-            if (sTime) {
-                const hours = now.getHours().toString().padStart(2, '0');
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                sTime.textContent = `${hours}:${minutes}`;
-            }
-
-            // Legacy Keywords Container Update
-            const container = document.getElementById('keywords-container');
-            if (container) {
-                container.innerHTML = ''; 
-                keywords.slice(0, 3).forEach(k => {
-                    let cleanK = k.replace(/['"#]/g, '');
-                    if (cleanK.toLowerCase() === 'hashtag') cleanK = 'Daily';
-
-                    const chip = document.createElement('div');
-                    chip.className = 'keyword-chip';
-                    chip.textContent = '#' + cleanK;
-                    container.appendChild(chip);
-                });
-            }
-        }
-    } catch (e) {
-        console.error("AI Metadata extraction failed:", e);
-        // Fallback cleanup of loading states
-        if (sTitle) sTitle.textContent = "New Recording";
     }
 }
 
@@ -633,8 +613,8 @@ function stopAction() {
         createAudioBufferFromSamples();
         updateState(STATE.REVIEW_PAUSED);
         
-        // Trigger AI Keyword Update
-        updateKeywordsAI();
+        // Monitor local info update
+        updateInfoCardLocal();
     } else if (currentState === STATE.REVIEW_PLAYING) {
         if (sourceNode) {
             try { sourceNode.stop(); } catch(e){}
@@ -1275,57 +1255,55 @@ async function generatePodcastScript(theme) {
     // Show Loader in Content Area
     contentDiv.innerHTML = '<div class="script-loader"><div class="script-spinner"></div></div>';
     
-    // Check API Key
-    if (typeof GEMINI_API_KEY === 'undefined' || GEMINI_API_KEY === "YOUR_API_KEY_HERE") {
-         contentDiv.innerHTML = '<div style="padding:20px; color:#606060;">Gemini API Key missing.<br>Please edit script.js</div>';
-         return;
-    }
+    // Check for recording data
+    // (Pollinations AI does not require a specific key, skipping that check)
 
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
         // System Instruction with explicit formatting and length request
-        const systemPrompt = {
-            parts: [{ text: `You are a professional podcast script writer. 
-            Theme: "${theme}".
-            
-            Task: Create a detailed, engaging podcast script based on the User Notes.
-            LENGTH REQUIREMENT: Make it LONG and detailed. At least 8-12 sentences per section. Expand on the ideas significantly (approx 400-500 words total).
-            
-            FORMATTING RULES:
-            1. Start directly with the [Intro] header. No "Here is the script" chat.
-            2. Use headers [Intro], [Body], [Outro].
-            3. Ensure sentences are clear and correct for TTS (Text-to-Speech).
-            4. CRITICAL: Do NOT include speaker labels (e.g. "Host:", "Guest:").
-            5. CRITICAL: Do NOT include sound effects, music cues, or stage directions (e.g. "[Music]", "*laughs*"). Write ONLY the spoken words.
-            ` }]
-        };
+        const systemPrompt = {20000); // 20s timeout (Pollinations might be slower)
 
-        const userContent = {
-            parts: [{
-                text: `User Notes: "${fullText}"`
-            }]
-        };
+        // System Prompt Construction
+        const systemPromptText = `You are a professional podcast script writer. 
+Theme: "${theme}".
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+Task: Create a detailed, engaging podcast script based on the User Notes.
+LENGTH REQUIREMENT: Make it LONG and detailed. At least 8-12 sentences per section. Expand on the ideas significantly (approx 400-500 words total).
+
+FORMATTING RULES:
+1. Start directly with the [Intro] header. No "Here is the script" chat.
+2. Use headers [Intro], [Body], [Outro].
+3. Ensure sentences are clear and correct for TTS (Text-to-Speech).
+4. CRITICAL: Do NOT include speaker labels (e.g. "Host:", "Guest:").
+5. CRITICAL: Do NOT include sound effects, music cues, or stage directions (e.g. "[Music]", "*laughs*"). Write ONLY the spoken words.`;
+
+        console.log(`[AI Status] Sending request to Pollinations AI... (Theme: ${theme})`);
+
+        // Pollinations.ai OpenAI-compatible Endpoint
+        const response = await fetch('https://text.pollinations.ai/openai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
             signal: controller.signal,
             body: JSON.stringify({
-                system_instruction: systemPrompt,
-                contents: [userContent]
+                messages: [
+                    { role: 'system', content: systemPromptText },
+                    { role: 'user', content: `User Notes: "${fullText}"` }
+                ],
+                model: 'openai', // Free tier model indicator
+                seed: 42
             })
         });
         
         clearTimeout(timeoutId);
 
         if (response.ok) {
+            console.log("[AI Status] Response received successfully from Pollinations.");
             const data = await response.json();
-            const text = data.candidates[0].content.parts[0].text;
-            
-            // Robust Parsing Logic (State-based)
-            let htmlBuffer = '';
+            const text = data.choices[0].message.content; // OpenAI format
             let sentencesForTTS = [];
             let sentenceCounter = 0;
             
@@ -1408,6 +1386,7 @@ async function generatePodcastScript(theme) {
 
             prepareTTS(sentencesForTTS);
         } else {
+            console.error(`[AI Status] API Error: ${response.status} ${response.statusText}`);
             console.error("Gemini API Error:", response.status, response.statusText);
             contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
                 Generation failed (${response.status}).<br>
@@ -1415,10 +1394,11 @@ async function generatePodcastScript(theme) {
             </div>`;
         }
     } catch (e) {
-        console.error("Script Gen Error:", e);
-        contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
-            Script generation timed out or failed.<br>
-            Check internet connection.
+        console.error("[AI Status] NetwPollinations API Error: ${response.status} ${response.statusText}`);
+            console.error("Pollinations API Error:", response.status, response.statusText);
+            contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
+                Generation failed (${response.status}).<br>
+                Pollinations AI might be bus
         </div>`;
     }
 }
