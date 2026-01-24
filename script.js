@@ -891,11 +891,17 @@ let radioVelocity = 0;
 let radioPreviousX = 0;
 let radioTimestamp = 0;
 let radioRafId = null;
+let isRadioClickPossible = false; // To distinguish click from drag
 
 function startRadioDrag(e) {
     if (radioRafId) cancelAnimationFrame(radioRafId); // user interrupted animation
     isRadioDragging = true;
+    isRadioClickPossible = true; // Assume click initially
     radioStartX = getRadioPageX(e) - radioCurrentX;
+    
+    // For click detection
+    radioDragStartPageX = getRadioPageX(e);
+
     radioPreviousX = getRadioPageX(e);
     radioTimestamp = Date.now();
     radioVelocity = 0;
@@ -908,6 +914,7 @@ function startRadioDrag(e) {
     document.addEventListener('mouseup', stopRadioDrag);
     document.addEventListener('touchend', stopRadioDrag);
 }
+let radioDragStartPageX = 0; // Helper to measure drag distance
 
 function getRadioPageX(e) {
     return e.touches ? e.touches[0].pageX : e.pageX;
@@ -917,6 +924,12 @@ function onRadioDrag(e) {
     if (!isRadioDragging) return;
     e.preventDefault();
     const x = getRadioPageX(e);
+    
+    // Check drag threshold for click
+    if (Math.abs(x - radioDragStartPageX) > 5) {
+        isRadioClickPossible = false;
+    }
+
     const now = Date.now();
     const dt = now - radioTimestamp;
     
@@ -975,11 +988,7 @@ function onRadioDrag(e) {
     updateRadioPosition(radioCurrentX);
 }
 
-// Variables to track loading state
-let isRadioLoading = false;
-let currentRadioTheme = "";
-
-function stopRadioDrag() {
+function stopRadioDrag(e) {
     isRadioDragging = false;
     const wrapper = document.querySelector('.radio-tuner-wrapper');
     if(wrapper) wrapper.style.cursor = 'grab';
@@ -988,8 +997,47 @@ function stopRadioDrag() {
     document.removeEventListener('mouseup', stopRadioDrag);
     document.removeEventListener('touchend', stopRadioDrag);
     
+    // Handle Click (Navigation)
+    if (isRadioClickPossible) {
+        if (!e) return; // Should not happen on mouseup
+        // Determine click position relative to center
+        // Center of screen is winWidth / 2? No, box center.
+        const rect = wrapper.getBoundingClientRect();
+        const clickX = (e.changedTouches ? e.changedTouches[0].clientX : e.clientX) - rect.left;
+        const centerX = rect.width / 2;
+        
+        // Threshold: center +/- 20%
+        if (clickX < centerX - 50) {
+            // Clicked Left -> Move Right (Prev Channel)
+            shiftRadioChannel(-1);
+            return;
+        } else if (clickX > centerX + 50) {
+            // Clicked Right -> Move Left (Next Channel)
+            shiftRadioChannel(1);
+            return;
+        }
+        // Center click -> maybe Play? (Already handled by btnPlay overlay)
+    }
+
     // Start Momentum / Snap Animation
     requestAnimationFrame(animateRadioInertia);
+}
+
+function shiftRadioChannel(direction) {
+    // animate snap to next index
+    // direction: -1 (Prev), 1 (Next)
+    // Target X should be current snapped index + direction * width
+    // Current Index:
+    let index = Math.round((-radioCurrentX - radioItemWidth/2) / radioItemWidth);
+    let targetIndex = index + direction;
+    
+    // We update targetX
+    const targetX = -(targetIndex * radioItemWidth + radioItemWidth/2);
+    
+    // Just use animation to go there
+    // Cancel inertia
+    radioVelocity = 0;
+    animateSnap(targetX);
 }
 
 function animateRadioInertia() {
@@ -1448,6 +1496,19 @@ function animateSnap(targetX) {
     if (Math.abs(diff) < 0.5) {
         radioCurrentX = targetX;
         updateRadioPosition(radioCurrentX);
+        
+        // --- ADDED: Update Channel on Snap Finish ---
+        // Calculate the snapped index
+        let index = Math.round((-radioCurrentX - radioItemWidth/2) / radioItemWidth);
+        const channelIdx = ((index % radioChannels.length) + radioChannels.length) % radioChannels.length;
+        const channelName = radioChannels[channelIdx];
+        
+        // Trigger Update if changed
+        if (channelName !== currentRadioTheme) {
+            handleRadioChannelChange(channelName);
+        }
+        // ---------------------------------------------
+        
         return; // Done
     }
     
