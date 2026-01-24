@@ -1260,10 +1260,7 @@ async function generatePodcastScript(theme) {
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
-
-        // System Instruction with explicit formatting and length request
-        const systemPrompt = {20000); // 20s timeout (Pollinations might be slower)
+        const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout (Pollinations might be slower)
 
         // System Prompt Construction
         const systemPromptText = `You are a professional podcast script writer. 
@@ -1394,11 +1391,11 @@ FORMATTING RULES:
             </div>`;
         }
     } catch (e) {
-        console.error("[AI Status] NetwPollinations API Error: ${response.status} ${response.statusText}`);
-            console.error("Pollinations API Error:", response.status, response.statusText);
-            contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
-                Generation failed (${response.status}).<br>
-                Pollinations AI might be bus
+        console.error("[AI Status] Network/Script Error:", e);
+        console.error("Script Gen Error:", e);
+        contentDiv.innerHTML = `<div style="padding:20px; color:#606060;">
+            Script generation timed out or failed.<br>
+            Check internet connection.
         </div>`;
     }
 }
